@@ -6,22 +6,22 @@ export class UniversidadController {
   constructor(private readonly universidadService: UniversidadService) {}
 
   @Post('carrera')
-  crearCarrera(@Body() { nombre, materias }: { nombre: string; materias: string[] }) {
-    return this.universidadService.crearCarrera({ nombre, materias });
+  crearCarrera(@Body() data: { nombre: string; materias: string[] }) {
+    return this.universidadService.crearCarrera(data);
   }
 
   @Post('estudiante')
-  crearEstudiante(@Body() { nombre }: { nombre: string }) {
-    return this.universidadService.crearEstudiante(nombre);
+  crearEstudiante(@Body() data: { nombre: string }) {
+    return this.universidadService.crearEstudiante(data.nombre);
   }
 
   @Post('matriculas')
-  crearMatriculas(@Body() { ciclo, activo }: { ciclo: string; activo: boolean }) {
-    return this.universidadService.crearMatriculas({ ciclo, activo });
+  crearMatriculas(@Body() data: { ciclo: string; activo: boolean }) {
+    return this.universidadService.crearMatriculas(data);
   }
 
   @Post('laboratorio')
-  crearLaboratorio(@Body() { nombre }: { nombre: string }) {
-    return this.universidadService.crearLaboratorio(nombre);
+  crearLaboratorio(@Body() data: { nombre: string }) {
+    return this.universidadService.crearLaboratorio(data.nombre);
   }
 }

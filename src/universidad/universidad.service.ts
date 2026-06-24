@@ -38,9 +38,8 @@ export class UniversidadService {
 
       const estudiantes = await tx.estudiante.findMany();
 
-      if (!carrera || estudiantes.length === 0) {
-        throw new Error('Faltan datos');
-      }
+      if (!carrera) throw new Error('No existe carrera');
+      if (estudiantes.length === 0) throw new Error('No hay estudiantes');
 
       const ciclo = await tx.ciclo.create({
         data: {
@@ -80,9 +79,7 @@ export class UniversidadService {
         where: { activa: true }
       });
 
-      if (!ciclo || !matricula) {
-        throw new Error('Datos incompletos');
-      }
+      if (!ciclo || !matricula) throw new Error('Datos incompletos');
 
       const laboratorio = await tx.laboratorio.create({
         data: { nombre }
