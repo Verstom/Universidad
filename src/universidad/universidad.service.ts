@@ -7,8 +7,7 @@ export class UniversidadService {
 
   async crearCarrera(data: { nombre: string; materias: string[] }) {
     return this.prisma.$transaction(async (tx) => {
-
-      const carrera = await tx.carrera.create({
+      return tx.carrera.create({
         data: {
           nombre: data.nombre,
           materias: {
@@ -21,11 +20,8 @@ export class UniversidadService {
           materias: true
         }
       });
-
-      return carrera;
     });
   }
-
 
   async crearEstudiante(nombre: string) {
     return this.prisma.estudiante.create({
@@ -34,57 +30,52 @@ export class UniversidadService {
   }
 
   async crearMatriculas(data: { ciclo: string; activo: boolean }) {
-  return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
+      const carrera = await tx.carrera.findFirst({
+        include: { materias: true },
+        orderBy: { id: 'desc' }
+      });
 
-    const carrera = await tx.carrera.findFirst({
-      include: { materias: true },
-      orderBy: { id: 'desc' }
-    });
+      const estudiantes = await tx.estudiante.findMany();
 
-    const estudiantes = await tx.estudiante.findMany();
-
-    if (!carrera || estudiantes.length === 0) {
-      throw new Error('Faltan datos');
-    }
-
-    
-    const ciclo = await tx.ciclo.create({
-      data: {
-        nombre: data.ciclo,   
-        activo: data.activo
+      if (!carrera || estudiantes.length === 0) {
+        throw new Error('Faltan datos');
       }
+
+      const ciclo = await tx.ciclo.create({
+        data: {
+          nombre: data.ciclo,
+          activo: data.activo
+        }
+      });
+
+      const materia = carrera.materias[0];
+
+      const matriculas = await tx.matricula.createMany({
+        data: estudiantes.map(e => ({
+          estudianteId: e.id,
+          carreraId: carrera.id,
+          cicloId: ciclo.id,
+          materiaId: materia.id,
+          activa: true
+        }))
+      });
+
+      return {
+        ciclo,
+        carrera: carrera.nombre,
+        estudiantes,
+        matriculas: matriculas.count
+      };
     });
-
-    const materia = carrera.materias[0];
-
-    const matriculas = await tx.matricula.createMany({
-      data: estudiantes.map(e => ({
-        estudianteId: e.id,
-        carreraId: carrera.id,
-        cicloId: ciclo.id,
-        materiaId: materia.id,
-        activa: true
-      }))
-    });
-
-    return {
-      ciclo,
-      carrera: carrera.nombre,
-      estudiantes,
-      matriculas: matriculas.count
-    };
-  });
-}
+  }
 
   async crearLaboratorio(nombre: string) {
     return this.prisma.$transaction(async (tx) => {
-
-      
       const ciclo = await tx.ciclo.findFirst({
         where: { activo: true }
       });
 
-      
       const matricula = await tx.matricula.findFirst({
         where: { activa: true }
       });
@@ -93,27 +84,17 @@ export class UniversidadService {
         throw new Error('Datos incompletos');
       }
 
-      
-      const materiaId = matricula.materiaId;
-
-      
       const laboratorio = await tx.laboratorio.create({
         data: { nombre }
       });
 
-      const asignacion = await tx.asignacionLab.create({
+      return tx.asignacionLab.create({
         data: {
           laboratorioId: laboratorio.id,
           cicloId: ciclo.id,
-          materiaId: materiaId
+          materiaId: matricula.materiaId
         }
       });
-
-      return {
-        laboratorio,
-        ciclo,
-        materiaId
-      };
     });
   }
 }
