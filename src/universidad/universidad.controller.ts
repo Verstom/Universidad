@@ -1,27 +1,27 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { UniversidadService } from './universidad.service';
 
 @Controller('universidad')
 export class UniversidadController {
-  constructor(private universidadService: UniversidadService) {}
+  constructor(private readonly universidadService: UniversidadService) {}
 
-  @Post('registrar-carrera')
-  registrarCarrera() {
-    return this.universidadService.registrarCarrera();
+  @Post('carrera')
+  crearCarrera(@Body() { nombre, materias }: { nombre: string; materias: string[] }) {
+    return this.universidadService.crearCarrera({ nombre, materias });
   }
 
-  @Post('registrar-estudiante')
-  registrarEstudiante(@Body() datos: { nombre: string }) {
-    return this.universidadService.registrarEstudiante(datos.nombre);
+  @Post('estudiante')
+  crearEstudiante(@Body() { nombre }: { nombre: string }) {
+    return this.universidadService.crearEstudiante(nombre);
   }
 
-  @Post('registrar-matriculas')
-  registrarMatriculas() {
-    return this.universidadService.registrarMatriculas();
+  @Post('matriculas')
+  crearMatriculas(@Body() { ciclo, activo }: { ciclo: string; activo: boolean }) {
+    return this.universidadService.crearMatriculas({ ciclo, activo });
   }
 
-  @Post('registrar-laboratorio')
-  registrarLaboratorio() {
-    return this.universidadService.registrarLaboratorio();
+  @Post('laboratorio')
+  crearLaboratorio(@Body() { nombre }: { nombre: string }) {
+    return this.universidadService.crearLaboratorio(nombre);
   }
 }

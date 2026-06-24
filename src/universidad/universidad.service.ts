@@ -5,148 +5,115 @@ import { PrismaService } from '../prisma/prisma.service';
 export class UniversidadService {
   constructor(private prisma: PrismaService) {}
 
-  
-  async registrarCarrera() {
+  async crearCarrera(data: { nombre: string; materias: string[] }) {
     return this.prisma.$transaction(async (tx) => {
+
       const carrera = await tx.carrera.create({
         data: {
-          nombre: 'Desarrollo de Software',
+          nombre: data.nombre,
           materias: {
-            create: [
-              { nombre: 'Programacion 1' },
-              { nombre: 'Programacion 2' },
-              { nombre: 'Base de Datos' },
-            ],
-          },
+            create: data.materias.map(m => ({
+              nombre: m
+            }))
+          }
         },
         include: {
-          materias: true,
-        },
+          materias: true
+        }
       });
 
       return carrera;
     });
   }
 
-  
-  async registrarEstudiante(nombre: string) {
+
+  async crearEstudiante(nombre: string) {
     return this.prisma.estudiante.create({
-      data: {
-        nombre,
-      },
+      data: { nombre }
     });
   }
 
-  
-  async registrarMatriculas() {
-    return this.prisma.$transaction(async (tx) => {
-      const carrera = await tx.carrera.findFirst({
-        where: {
-          nombre: 'Desarrollo de Software',
-        },
-        include: {
-          materias: true,
-        },
-        orderBy: {
-          id: 'desc',
-        },
-      });
+  async crearMatriculas(data: { ciclo: string; activo: boolean }) {
+  return this.prisma.$transaction(async (tx) => {
 
-      if (!carrera) {
-        throw new Error('La carrera no existe');
+    const carrera = await tx.carrera.findFirst({
+      include: { materias: true },
+      orderBy: { id: 'desc' }
+    });
+
+    const estudiantes = await tx.estudiante.findMany();
+
+    if (!carrera || estudiantes.length === 0) {
+      throw new Error('Faltan datos');
+    }
+
+    
+    const ciclo = await tx.ciclo.create({
+      data: {
+        nombre: data.ciclo,   
+        activo: data.activo
       }
+    });
 
-      if (carrera.materias.length === 0) {
-        throw new Error('La carrera no tiene materias');
-      }
+    const materia = carrera.materias[0];
 
-      const estudiantes = await tx.estudiante.findMany();
-
-      if (estudiantes.length === 0) {
-        throw new Error('No hay estudiantes registrados');
-      }
-
-      const ciclo = await tx.ciclo.create({
-        data: {
-          nombre: '2026-2027',
-          activo: true,
-        },
-      });
-
-      const materia = carrera.materias[0];
-
-      const datosMatriculas = estudiantes.map((estudiante) => ({
-        activa: true,
-        estudianteId: estudiante.id,
+    const matriculas = await tx.matricula.createMany({
+      data: estudiantes.map(e => ({
+        estudianteId: e.id,
         carreraId: carrera.id,
         cicloId: ciclo.id,
         materiaId: materia.id,
-      }));
-
-      const matriculas = await tx.matricula.createMany({
-        data: datosMatriculas,
-      });
-
-      return {
-        ciclo,
-        carrera: carrera.nombre,
-        materia: materia.nombre,
-        cantidadMatriculas: matriculas.count,
-      };
+        activa: true
+      }))
     });
-  }
 
-  
-  async registrarLaboratorio() {
+    return {
+      ciclo,
+      carrera: carrera.nombre,
+      estudiantes,
+      matriculas: matriculas.count
+    };
+  });
+}
+
+  async crearLaboratorio(nombre: string) {
     return this.prisma.$transaction(async (tx) => {
+
+      
       const ciclo = await tx.ciclo.findFirst({
-        where: {
-          activo: true,
-        },
-        orderBy: {
-          id: 'desc',
-        },
+        where: { activo: true }
       });
 
-      if (!ciclo) {
-        throw new Error('No hay un ciclo activo');
-      }
-
+      
       const matricula = await tx.matricula.findFirst({
-        where: {
-          cicloId: ciclo.id,
-          activa: true,
-        },
+        where: { activa: true }
       });
 
-      if (!matricula) {
-        throw new Error('No hay matriculas activas');
+      if (!ciclo || !matricula) {
+        throw new Error('Datos incompletos');
       }
 
-      let laboratorio = await tx.laboratorio.findFirst();
+      
+      const materiaId = matricula.materiaId;
 
-      if (!laboratorio) {
-        laboratorio = await tx.laboratorio.create({
-          data: {
-            nombre: 'Laboratorio 1',
-          },
-        });
-      }
+      
+      const laboratorio = await tx.laboratorio.create({
+        data: { nombre }
+      });
 
       const asignacion = await tx.asignacionLab.create({
         data: {
           laboratorioId: laboratorio.id,
           cicloId: ciclo.id,
-          materiaId: matricula.materiaId,
-        },
-        include: {
-          laboratorio: true,
-          ciclo: true,
-          materia: true,
-        },
+          materiaId: materiaId
+        }
       });
 
-      return asignacion;
+      return {
+        laboratorio,
+        ciclo,
+        materiaId
+      };
     });
   }
 }
